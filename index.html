@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bijouterie Éclat</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <section id="login-screen" class="login-screen">
+      <form id="login-form" class="login-card">
+        <div class="login-logo" id="login-logo"></div>
+        <h1>Bijouterie Éclat</h1>
+        <input name="username" placeholder="Nom d'utilisateur" required />
+        <input name="password" type="password" placeholder="Mot de passe" required />
+        <button type="submit">Se connecter</button>
+        <p id="login-error"></p>
+        <p id="launch-help" class="login-help"></p>
+      </form>
+    </section>
+
+    <main class="app-shell">
+      <header class="hero">
+        <div class="brand">
+          <div id="logo"></div>
+          <div>
+            <h1>Bijouterie Éclat</h1>
+            <p>Gestion de stock, ventes et reçus électroniques</p>
+          </div>
+        </div>
+        <div class="hero-actions">
+          <span id="current-user"></span>
+          <button id="download-current">Télécharger PDF</button>
+          <button id="print-current" class="secondary">Imprimer</button>
+          <button id="logout" class="secondary">Déconnexion</button>
+        </div>
+      </header>
+
+      <nav class="tabs">
+        <button data-tab="dashboard" class="active">Dashboard</button>
+        <button data-tab="inventory">Stock</button>
+        <button data-tab="sales">Ventes</button>
+        <button data-tab="clients">Clients</button>
+        <button data-tab="receipts">Reçus</button>
+      </nav>
+
+      <section id="dashboard" class="tab-panel active">
+        <section class="stats-grid">
+          <article><span>Bijoux en stock</span><strong id="stock-count"></strong></article>
+          <article><span>Ventes</span><strong id="sales-count"></strong></article>
+          <article><span>Chiffre d'affaires</span><strong id="turnover"></strong></article>
+          <article><span>Stocks faibles</span><strong id="low-stock"></strong></article>
+        </section>
+        <section class="split-grid">
+          <section class="panel">
+            <h2>Gestion des bijoux</h2>
+            <div class="table-wrap"><table id="inventory-table"></table></div>
+          </section>
+          <section class="panel">
+            <h2>Reçu électronique</h2>
+            <div id="dashboard-receipt"></div>
+          </section>
+        </section>
+      </section>
+
+      <section id="inventory" class="tab-panel">
+        <section class="split-grid">
+          <section class="panel">
+            <h2>Ajouter un bijou</h2>
+            <form id="product-form" class="form-grid">
+              <input name="name" placeholder="Nom du bijou" required />
+              <input name="category" placeholder="Catégorie" required />
+              <input name="stock" type="number" min="0" placeholder="Stock" required />
+              <input name="price" type="number" min="0" placeholder="Prix" required />
+              <button type="submit">Ajouter le bijou</button>
+            </form>
+          </section>
+          <section class="panel">
+            <h2>Catalogue</h2>
+            <div class="table-wrap"><table id="inventory-table-full"></table></div>
+          </section>
+        </section>
+      </section>
+
+      <section id="sales" class="tab-panel">
+        <section class="split-grid">
+          <section class="panel">
+            <h2>Nouvelle vente</h2>
+            <form id="sale-form" class="form-grid">
+              <select name="savedCustomer" id="customer-select">
+                <option value="">Choisir un client existant</option>
+              </select>
+              <input name="customer" placeholder="Nom du client" required />
+              <input name="email" type="email" placeholder="Email du client" required />
+              <select name="productId" id="product-select"></select>
+              <input name="qty" type="number" min="1" value="1" required />
+              <button type="submit">Enregistrer la vente</button>
+            </form>
+          </section>
+          <section class="panel">
+            <h2>Historique des ventes</h2>
+            <div class="table-wrap"><table id="sales-table"></table></div>
+          </section>
+        </section>
+      </section>
+
+      <section id="clients" class="tab-panel">
+        <section class="split-grid">
+          <section class="panel">
+            <h2>Ajouter un client</h2>
+            <form id="customer-form" class="form-grid">
+              <input name="name" placeholder="Nom du client" required />
+              <input name="email" type="email" placeholder="Email du client" required />
+              <input name="phone" placeholder="Téléphone" />
+              <button type="submit">Enregistrer le client</button>
+            </form>
+          </section>
+          <section class="panel">
+            <h2>Espace client</h2>
+            <div id="customer-grid" class="customer-grid"></div>
+          </section>
+        </section>
+      </section>
+
+      <section id="receipts" class="tab-panel">
+        <section class="split-grid">
+          <section class="panel">
+            <h2>Historique des ventes</h2>
+            <div class="table-wrap"><table id="receipt-sales-table"></table></div>
+          </section>
+          <section class="panel">
+            <h2>Reçu électronique</h2>
+            <div id="receipt-preview"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+    <script src="./src/app.js"></script>
+  </body>
+</html>
