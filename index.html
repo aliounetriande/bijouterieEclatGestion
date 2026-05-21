@@ -38,10 +38,13 @@
 
       <nav class="tabs">
         <button data-tab="dashboard" class="active">Dashboard</button>
+        <button data-tab="analytics">Analytics</button>
         <button data-tab="inventory">Stock</button>
         <button data-tab="sales">Ventes</button>
+        <button data-tab="orders">Commandes</button>
         <button data-tab="clients">Clients</button>
         <button data-tab="receipts">Reçus</button>
+        <button data-tab="admin">Admin</button>
       </nav>
 
       <section id="dashboard" class="tab-panel active">
@@ -53,12 +56,45 @@
         </section>
         <section class="split-grid">
           <section class="panel">
-            <h2>Gestion des bijoux</h2>
-            <div class="table-wrap"><table id="inventory-table"></table></div>
+            <h2>Ventes par mois</h2>
+            <canvas id="dashboard-chart" height="280"></canvas>
           </section>
           <section class="panel">
             <h2>Reçu électronique</h2>
             <div id="dashboard-receipt"></div>
+          </section>
+        </section>
+        <section class="split-grid" style="margin-top:0">
+          <section class="panel">
+            <h2>Gestion des bijoux</h2>
+            <div class="table-wrap"><table id="inventory-table"></table></div>
+          </section>
+          <section class="panel">
+            <h2>Dernières ventes</h2>
+            <div class="table-wrap"><table id="dashboard-sales-table"></table></div>
+          </section>
+        </section>
+      </section>
+
+      <section id="analytics" class="tab-panel">
+        <section class="stats-grid">
+          <article><span>Ventes ce mois</span><strong id="analytics-month-sales"></strong></article>
+          <article><span>CA ce mois</span><strong id="analytics-month-revenue"></strong></article>
+          <article><span>Meilleur mois</span><strong id="analytics-best-month"></strong></article>
+          <article><span>Moyenne / mois</span><strong id="analytics-avg-revenue"></strong></article>
+        </section>
+        <section class="panel" style="margin-top:18px">
+          <h2>Évolution des ventes par mois</h2>
+          <canvas id="analytics-chart" height="400"></canvas>
+        </section>
+        <section class="split-grid">
+          <section class="panel">
+            <h2>Détail par mois</h2>
+            <div class="table-wrap"><table id="analytics-table"></table></div>
+          </section>
+          <section class="panel">
+            <h2>Top produits vendus</h2>
+            <div class="table-wrap"><table id="analytics-products-table"></table></div>
           </section>
         </section>
       </section>
@@ -104,6 +140,32 @@
         </section>
       </section>
 
+      <section id="orders" class="tab-panel">
+        <section class="split-grid">
+          <section class="panel">
+            <h2>Nouvelle commande</h2>
+            <form id="order-form" class="form-grid">
+              <select name="savedCustomer" id="order-customer-select">
+                <option value="">Choisir un client existant</option>
+              </select>
+              <input name="customer" placeholder="Nom du client" required />
+              <input name="email" type="email" placeholder="Email du client" required />
+              <input name="itemName" placeholder="Nom du bijou commandé" required />
+              <input name="itemDescription" placeholder="Description (détails, taille, matière...)" />
+              <input name="price" type="number" min="0" placeholder="Prix total convenu (FCFA)" required />
+              <input name="advance" type="number" min="0" value="0" placeholder="Montant avance (FCFA)" />
+              <button type="submit">Créer la commande</button>
+            </form>
+          </section>
+          <section class="panel">
+            <h2>Commandes en cours</h2>
+            <div class="table-wrap"><table id="orders-pending-table"></table></div>
+            <h2 style="margin-top:24px">Commandes livrées</h2>
+            <div class="table-wrap"><table id="orders-delivered-table"></table></div>
+          </section>
+        </section>
+      </section>
+
       <section id="clients" class="tab-panel">
         <section class="split-grid">
           <section class="panel">
@@ -133,6 +195,10 @@
             <div id="receipt-preview"></div>
           </section>
         </section>
+      </section>
+
+      <section id="admin" class="tab-panel">
+        <div id="admin-panel"></div>
       </section>
     </main>
     <script src="./src/app.js"></script>

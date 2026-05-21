@@ -95,6 +95,19 @@ def init_db():
           qty INTEGER NOT NULL,
           price INTEGER NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS orders (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_id TEXT UNIQUE NOT NULL,
+          customer_id INTEGER NOT NULL,
+          item_name TEXT NOT NULL,
+          item_description TEXT,
+          price INTEGER NOT NULL,
+          advance INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'en_attente',
+          date_created TEXT NOT NULL,
+          date_delivered TEXT,
+          user_id INTEGER NOT NULL
+        );
         """
     )
 
@@ -157,9 +170,14 @@ def index():
     return send_from_directory(ROOT, "index.html")
 
 
-@app.route("/<path:filename>")
-def static_files(filename):
-    return send_from_directory(ROOT, filename)
+@app.route("/src/<path:filename>")
+def static_src(filename):
+    return send_from_directory(ROOT / "src", filename)
+
+
+@app.route("/index.html")
+def index_html():
+    return send_from_directory(ROOT, "index.html")
 
 
 # ─── API Auth ────────────────────────────────────────────────────────────────
@@ -242,6 +260,19 @@ def api_bootstrap():
         "products": products,
         "customers": customers,
         "sales": sales,
+        "orders": [
+            dict(r) for r in db.execute(
+                """
+                SELECT orders.*, customers.name AS customer, customers.email
+                FROM orders
+                JOIN customers ON customers.id = orders.customer_id
+                ORDER BY orders.id DESC
+                """
+            )
+        ],
+        "users": [
+            dict(r) for r in db.execute("SELECT id, username, role, full_name FROM users ORDER BY id")
+        ] if g.user["role"] == "admin" else [],
     })
 
 
@@ -259,6 +290,26 @@ def api_products():
         "INSERT INTO products (name, category, stock, price) VALUES (?, ?, ?, ?)",
         (body["name"], body["category"], body["stock"], body["price"]),
     )
+    db.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/products/<int:product_id>", methods=["DELETE"])
+@login_required
+def api_delete_product(product_id):
+    db = get_db()
+    product = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+    if not product:
+        return jsonify({"error": "Produit introuvable"}), 404
+
+    # Vérifier si le produit a des ventes associées
+    has_sales = db.execute(
+        "SELECT COUNT(*) FROM sale_items WHERE product_id = ?", (product_id,)
+    ).fetchone()[0]
+    if has_sales:
+        return jsonify({"error": "Impossible de supprimer : ce produit a des ventes associées"}), 400
+
+    db.execute("DELETE FROM products WHERE id = ?", (product_id,))
     db.commit()
     return jsonify({"ok": True})
 
@@ -284,7 +335,54 @@ def api_customers():
     return jsonify({"ok": True})
 
 
-# ─── API Ventes ──────────────────────────────────────────────────────────────
+@app.route("/api/customers/<int:customer_id>", methods=["DELETE"])
+@login_required
+def api_delete_customer(customer_id):
+    db = get_db()
+    customer = db.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    if not customer:
+        return jsonify({"error": "Client introuvable"}), 404
+
+    # Vérifier si le client a des ventes associées
+    has_sales = db.execute(
+        "SELECT COUNT(*) FROM sales WHERE customer_id = ?", (customer_id,)
+    ).fetchone()[0]
+    if has_sales:
+        return jsonify({"error": "Impossible de supprimer : ce client a des ventes associées"}), 400
+
+    db.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
+    db.commit()
+    return jsonify({"ok": True})
+
+
+# ─── API Admin : Reset mot de passe ─────────────────────────────────────
+
+@app.route("/api/users/<int:user_id>/reset-password", methods=["POST"])
+@login_required
+def api_reset_password(user_id):
+    if g.user["role"] != "admin":
+        return jsonify({"error": "Réservé à l'administrateur"}), 403
+
+    body = request.get_json(silent=True) or {}
+    new_password = body.get("password", "").strip()
+
+    if len(new_password) < 6:
+        return jsonify({"error": "Le mot de passe doit faire au moins 6 caractères"}), 400
+
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        return jsonify({"error": "Utilisateur introuvable"}), 404
+
+    db.execute(
+        "UPDATE users SET password = ? WHERE id = ?",
+        (generate_password_hash(new_password), user_id),
+    )
+    db.commit()
+    return jsonify({"ok": True})
+
+
+# ─── API Bootstrap (ajout liste users pour admin) ───────────────────────────
 
 @app.route("/api/sales", methods=["POST"])
 @login_required
@@ -347,6 +445,125 @@ def api_sales():
         (cursor.lastrowid, product["id"], product["name"], body["qty"], product["price"]),
     )
 
+    db.commit()
+    return jsonify({"ok": True})
+
+
+# ─── API Commandes ───────────────────────────────────────────────────────────
+
+@app.route("/api/orders", methods=["POST"])
+@login_required
+def api_create_order():
+    body = request.get_json(silent=True) or {}
+    db = get_db()
+
+    # Validation
+    if not body.get("itemName") or not body.get("price"):
+        return jsonify({"error": "Nom du bijou et prix requis"}), 400
+    if not body.get("customer") or not body.get("email"):
+        return jsonify({"error": "Informations client requises"}), 400
+
+    price = int(body["price"])
+    advance = int(body.get("advance", 0))
+
+    if advance < 0 or advance > price:
+        return jsonify({"error": "Montant de l'avance invalide"}), 400
+
+    # Upsert client
+    db.execute(
+        """
+        INSERT INTO customers (name, email, phone)
+        VALUES (?, ?, '')
+        ON CONFLICT(email) DO UPDATE SET name = excluded.name
+        """,
+        (body["customer"], body["email"]),
+    )
+    customer = db.execute(
+        "SELECT * FROM customers WHERE email = ?", (body["email"],)
+    ).fetchone()
+
+    order_id = f"#CMD-{uuid.uuid4().hex[:6].upper()}"
+
+    db.execute(
+        """
+        INSERT INTO orders (order_id, customer_id, item_name, item_description, price, advance, status, date_created, user_id)
+        VALUES (?, ?, ?, ?, ?, ?, 'en_attente', ?, ?)
+        """,
+        (
+            order_id,
+            customer["id"],
+            body["itemName"],
+            body.get("itemDescription", ""),
+            price,
+            advance,
+            datetime.now().strftime("%d/%m/%Y"),
+            g.user["id"],
+        ),
+    )
+    db.commit()
+    return jsonify({"ok": True, "orderId": order_id})
+
+
+@app.route("/api/orders/<int:order_id>/deliver", methods=["POST"])
+@login_required
+def api_deliver_order(order_id):
+    db = get_db()
+    order = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+
+    if not order:
+        return jsonify({"error": "Commande introuvable"}), 404
+    if order["status"] == "livre":
+        return jsonify({"error": "Commande déjà livrée"}), 400
+
+    now = datetime.now().strftime("%d/%m/%Y")
+
+    # Marquer comme livré
+    db.execute(
+        "UPDATE orders SET status = 'livre', date_delivered = ? WHERE id = ?",
+        (now, order_id),
+    )
+
+    # Créer la vente correspondante
+    receipt_id = f"#RC-{uuid.uuid4().hex[:6].upper()}"
+    cursor = db.execute(
+        """
+        INSERT INTO sales (receipt_id, customer_id, date, total, user_id)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            receipt_id,
+            order["customer_id"],
+            now,
+            order["price"],
+            g.user["id"],
+        ),
+    )
+
+    # Créer l'item de vente (product_id = 0 car c'est une commande sur mesure)
+    db.execute(
+        """
+        INSERT INTO sale_items (sale_id, product_id, name, qty, price)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (cursor.lastrowid, 0, order["item_name"], 1, order["price"]),
+    )
+
+    db.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/orders/<int:order_id>", methods=["DELETE"])
+@login_required
+def api_delete_order(order_id):
+    db = get_db()
+    order = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+
+    if not order:
+        return jsonify({"error": "Commande introuvable"}), 404
+    if order["status"] == "livre":
+        return jsonify({"error": "Impossible de supprimer une commande livrée"}), 400
+
+    db.execute("DELETE FROM orders WHERE id = ?", (order_id,))
     db.commit()
     return jsonify({"ok": True})
 
