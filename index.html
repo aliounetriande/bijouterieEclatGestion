@@ -127,7 +127,7 @@
                 <option value="">Choisir un client existant</option>
               </select>
               <input name="customer" placeholder="Nom du client" required />
-              <input name="email" type="email" placeholder="Email du client" required />
+              <input name="phone" type="tel" placeholder="Téléphone du client" />
               <select name="productId" id="product-select"></select>
               <input name="qty" type="number" min="1" value="1" required />
               <button type="submit">Enregistrer la vente</button>
@@ -149,7 +149,7 @@
                 <option value="">Choisir un client existant</option>
               </select>
               <input name="customer" placeholder="Nom du client" required />
-              <input name="email" type="email" placeholder="Email du client" required />
+              <input name="phone" type="tel" placeholder="Téléphone du client" />
               <input name="itemName" placeholder="Nom du bijou commandé" required />
               <input name="itemDescription" placeholder="Description (détails, taille, matière...)" />
               <input name="price" type="number" min="0" placeholder="Prix total convenu (FCFA)" required />
@@ -172,8 +172,7 @@
             <h2>Ajouter un client</h2>
             <form id="customer-form" class="form-grid">
               <input name="name" placeholder="Nom du client" required />
-              <input name="email" type="email" placeholder="Email du client" required />
-              <input name="phone" placeholder="Téléphone" />
+              <input name="phone" type="tel" placeholder="Téléphone" />
               <button type="submit">Enregistrer le client</button>
             </form>
           </section>

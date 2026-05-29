@@ -181,31 +181,34 @@ function renderCustomerSelect() {
   document.getElementById('customer-select').innerHTML = `
     <option value="">Choisir un client existant</option>
     ${state.customers
-      .map((customer) => `<option value="${customer.email}">${customer.name}</option>`)
+      .map((customer) => `<option value="${customer.phone || customer.id}">${customer.name}</option>`)
       .join('')}
   `;
 }
 
 function renderCustomers() {
-  const salesByEmail = new Map();
+  const salesByPhone = new Map();
   state.sales.forEach((sale) => {
-    const summary = salesByEmail.get(sale.email) || { purchases: 0, total: 0 };
+    const key = sale.phone || sale.customer;
+    const summary = salesByPhone.get(key) || { purchases: 0, total: 0 };
     summary.purchases += 1;
     summary.total += sale.total;
-    salesByEmail.set(sale.email, summary);
+    salesByPhone.set(key, summary);
   });
   document.getElementById('customer-grid').innerHTML = state.customers
     .map(
-      (customer) => `
+      (customer) => {
+        const key = customer.phone || customer.name;
+        return `
         <article>
           <h3>${customer.name}</h3>
-          <p>${customer.email}</p>
           <p>${customer.phone || 'Téléphone non renseigné'}</p>
-          <strong>${salesByEmail.get(customer.email)?.purchases || 0} achat(s)</strong>
-          <span>${formatPrice(salesByEmail.get(customer.email)?.total || 0)}</span>
+          <strong>${salesByPhone.get(key)?.purchases || 0} achat(s)</strong>
+          <span>${formatPrice(salesByPhone.get(key)?.total || 0)}</span>
           <button class="table-button delete-btn" style="margin-top:10px" data-delete-customer="${customer.id}">Supprimer</button>
         </article>
-      `,
+      `;
+      },
     )
     .join('');
 }
@@ -281,7 +284,7 @@ function renderOrderCustomerSelect() {
   el.innerHTML = `
     <option value="">Choisir un client existant</option>
     ${state.customers
-      .map((c) => `<option value="${c.email}">${c.name}</option>`)
+      .map((c) => `<option value="${c.phone || c.id}">${c.name}</option>`)
       .join('')}
   `;
 }
@@ -306,8 +309,8 @@ function buildOrderPdf(order, type) {
 
     'BT /F2 11 Tf 50 685 Td (Client :) Tj ET',
     `BT /F1 11 Tf 130 685 Td (${escapePdfText(order.customer)}) Tj ET`,
-    'BT /F2 11 Tf 50 668 Td (Email :) Tj ET',
-    `BT /F1 11 Tf 130 668 Td (${escapePdfText(order.email)}) Tj ET`,
+    'BT /F2 11 Tf 50 668 Td (Tel :) Tj ET',
+    `BT /F1 11 Tf 130 668 Td (${escapePdfText(order.phone || 'Non renseigne')}) Tj ET`,
     'BT /F2 11 Tf 50 651 Td (Date commande :) Tj ET',
     `BT /F1 11 Tf 160 651 Td (${escapePdfText(order.date_created)}) Tj ET`,
   ];
@@ -682,8 +685,8 @@ function buildPdf(sale) {
     // ── Infos client ──
     'BT /F2 11 Tf 50 685 Td (Client :) Tj ET',
     `BT /F1 11 Tf 110 685 Td (${escapePdfText(sale.customer)}) Tj ET`,
-    'BT /F2 11 Tf 50 668 Td (Email :) Tj ET',
-    `BT /F1 11 Tf 110 668 Td (${escapePdfText(sale.email)}) Tj ET`,
+    'BT /F2 11 Tf 50 668 Td (Tel :) Tj ET',
+    `BT /F1 11 Tf 110 668 Td (${escapePdfText(sale.phone || 'Non renseigne')}) Tj ET`,
     'BT /F2 11 Tf 50 651 Td (Date :) Tj ET',
     `BT /F1 11 Tf 110 651 Td (${escapePdfText(sale.date)}) Tj ET`,
 
@@ -763,7 +766,7 @@ function downloadPdf(sale) {
 function syncCustomerIntoSaleForm(customer) {
   const saleForm = document.getElementById('sale-form');
   saleForm.elements.customer.value = customer.name;
-  saleForm.elements.email.value = customer.email;
+  saleForm.elements.phone.value = customer.phone || '';
 }
 
 document.addEventListener('click', async (event) => {
@@ -920,7 +923,6 @@ document.getElementById('customer-form').addEventListener('submit', async (event
   const form = new FormData(formEl);
   const customer = {
     name: form.get('name'),
-    email: form.get('email'),
     phone: form.get('phone'),
   };
   try {
@@ -935,7 +937,8 @@ document.getElementById('customer-form').addEventListener('submit', async (event
 });
 
 document.getElementById('customer-select').addEventListener('change', (event) => {
-  const customer = state.customers.find((item) => item.email === event.target.value);
+  const val = event.target.value;
+  const customer = state.customers.find((item) => (item.phone || String(item.id)) === val);
   if (customer) syncCustomerIntoSaleForm(customer);
 });
 
@@ -948,7 +951,7 @@ document.getElementById('sale-form').addEventListener('submit', async (event) =>
       method: 'POST',
       body: JSON.stringify({
         customer: form.get('customer'),
-        email: form.get('email'),
+        phone: form.get('phone'),
         productId: Number(form.get('productId')),
         qty: Number(form.get('qty')),
       }),
@@ -962,11 +965,12 @@ document.getElementById('sale-form').addEventListener('submit', async (event) =>
 });
 
 document.getElementById('order-customer-select').addEventListener('change', (event) => {
-  const customer = state.customers.find((item) => item.email === event.target.value);
+  const val = event.target.value;
+  const customer = state.customers.find((item) => (item.phone || String(item.id)) === val);
   if (customer) {
     const orderForm = document.getElementById('order-form');
     orderForm.elements.customer.value = customer.name;
-    orderForm.elements.email.value = customer.email;
+    orderForm.elements.phone.value = customer.phone || '';
   }
 });
 
@@ -979,7 +983,7 @@ document.getElementById('order-form').addEventListener('submit', async (event) =
       method: 'POST',
       body: JSON.stringify({
         customer: form.get('customer'),
-        email: form.get('email'),
+        phone: form.get('phone'),
         itemName: form.get('itemName'),
         itemDescription: form.get('itemDescription'),
         price: Number(form.get('price')),
