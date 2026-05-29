@@ -634,21 +634,6 @@ def api_delete_order(order_id):
     return jsonify({"ok": True})
 
 
-# ─── Setup endpoint (à supprimer après utilisation) ──────────────────────────
-
-@app.route("/api/setup-btrs-2026", methods=["POST"])
-def setup_btrs():
-    existing = db_fetchone("SELECT * FROM users WHERE username = ?", ("btrs",))
-    if existing:
-        return jsonify({"error": "Compte déjà existant"}), 400
-    db_execute(
-        "INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)",
-        ("btrs", generate_password_hash("Btrs@2026!"), "admin", "BTRS Support"),
-    )
-    db_commit()
-    return jsonify({"ok": True, "message": "Compte btrs créé"})
-
-
 # ─── Démarrage ───────────────────────────────────────────────────────────────
 
 init_db()
